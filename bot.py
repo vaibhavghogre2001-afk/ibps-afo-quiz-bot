@@ -1,57 +1,83 @@
-
 import os
-from telegram import Update
-from telegram.ext import Updater, CommandHandler, CallbackContext
 import random
+from telegram import Update
+from telegram.ext import (
+    ApplicationBuilder,
+    CommandHandler,
+    ContextTypes,
+)
 
 TOKEN = os.getenv("BOT_TOKEN")
 
-questions = [
+QUESTIONS = [
     {
-        "q": "Which hormone regulates milk production in animals?",
-        "a": "Prolactin"
+        "question": "IBPS AFO exam is conducted by?",
+        "options": ["RBI", "IBPS", "NABARD", "SBI"],
+        "answer": "IBPS",
     },
     {
-        "q": "What is the normal gestation period of cow?",
-        "a": "280 days"
+        "question": "Main focus of AFO is?",
+        "options": ["IT", "Agriculture", "Law", "Marketing"],
+        "answer": "Agriculture",
     },
-    {
-        "q": "Which vitamin is responsible for blood clotting?",
-        "a": "Vitamin K"
-    },
-    {
-        "q": "Which fodder is rich in protein?",
-        "a": "Lucerne"
-    }
 ]
 
-def start(update: Update, context: CallbackContext):
-    update.message.reply_text(
-        "🐄 IBPS AFO Quiz Bot\n\nCommands:\n/quiz - Get a question\n/answer - Show answer"
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    await update.message.reply_text(
+        "👋 Welcome to IBPS AFO Quiz Bot!\n\nType /quiz to start quiz."
     )
 
-def quiz(update: Update, context: CallbackContext):
-    q = random.choice(questions)
-    context.user_data["answer"] = q["a"]
-    update.message.reply_text("❓ Question:\n" + q["q"])
 
-def answer(update: Update, context: CallbackContext):
-    ans = context.user_data.get("answer")
-    if ans:
-        update.message.reply_text("✅ Answer:\n" + ans)
-    else:
-        update.message.reply_text("First use /quiz")
+async def quiz(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    q = random.choice(QUESTIONS)
+    text = f"❓ {q['question']}\n\n"
+    for i, opt in enumerate(q["options"], 1):
+        text += f"{i}. {opt}\n"
+    text += "\nReply with option number (1-4)."
+
+    context.user_data["answer"] = q["answer"]
+    context.user_data["options"] = q["options"]
+
+    await update.message.reply_text(text)
+
+
+async def check_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    if "answer" not in context.user_data:
+        return
+
+    try:
+        choice = int(update.message.text) - 1
+        selected = context.user_data["options"][choice]
+        correct = context.user_data["answer"]
+
+        if selected == correct:
+            await update.message.reply_text("✅ Correct!")
+        else:
+            await update.message.reply_text(f"❌ Wrong! Correct answer: {correct}")
+    except:
+        await update.message.reply_text("Please reply with a number (1-4).")
+
 
 def main():
-    updater = Updater(TOKEN, use_context=True)
-    dp = updater.dispatcher
+    app = ApplicationBuilder().token(TOKEN).build()
 
-    dp.add_handler(CommandHandler("start", start))
-    dp.add_handler(CommandHandler("quiz", quiz))
-    dp.add_handler(CommandHandler("answer", answer))
+    app.add_handler(CommandHandler("start", start))
+    app.add_handler(CommandHandler("quiz", quiz))
+    app.add_handler(CommandHandler("help", start))
+    app.add_handler(
+        CommandHandler("answer", check_answer)
+    )
 
-    updater.start_polling()
-    updater.idle()
+    app.add_handler(
+        telegram.ext.MessageHandler(
+            telegram.ext.filters.TEXT & ~telegram.ext.filters.COMMAND,
+            check_answer,
+        )
+    )
+
+    app.run_polling()
+
 
 if __name__ == "__main__":
     main()
