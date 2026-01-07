@@ -3,7 +3,7 @@ import random
 from telegram import Update
 from telegram.ext import ApplicationBuilder, CommandHandler, ContextTypes
 
-TOKEN = os.environ.get("BOT_TOKEN")
+TOKEN = os.environ.get("8535395184:AAFZZNc2q1GeS7qZV_ppNDakz0Aq4eYzxlQ")
 
 QUESTIONS = [
     {"q": "Which nutrient is most important for plant growth?", "a": "Nitrogen"},
